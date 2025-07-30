@@ -1,7 +1,18 @@
+# Web framework and server
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
+
+# JWT and cryptography
 pyjwt[crypto]==2.8.0
+
+# HTTP client
 httpx==0.25.2
+
+# Data validation
 pydantic==2.5.0
-python-multipart==0.0.6
+
+# Environment variables
 python-dotenv==1.0.0
+
+# Production optimizations
+gunicorn==21.2.0

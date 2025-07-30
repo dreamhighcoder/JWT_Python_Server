@@ -1,15 +1,19 @@
 # Google Cloud Token Server
 
-A FastAPI-based web service that generates short-lived Google Cloud access tokens for Document AI and other Google Cloud services.
+A production-ready FastAPI-based web service that generates short-lived Google Cloud access tokens for Document AI and other Google Cloud services.
 
 ## Features
 
-- 🚀 FastAPI with automatic API documentation
-- 🔐 API key authentication
-- 🏥 Health check endpoints
-- 📊 Structured logging
-- 🐳 Docker support
-- ☁️ Ready for Cloud Run and Render.com deployment
+- 🚀 **FastAPI** with automatic API documentation
+- 🔐 **API key authentication** for secure access
+- 🏥 **Comprehensive health checks** (basic, detailed, readiness, liveness)
+- 📊 **Structured logging** with request tracking
+- 🔄 **Auto-restart capabilities** with health monitoring
+- 🛡️ **Graceful shutdown** handling
+- 🚨 **Error tracking** and failure rate monitoring
+- 🌐 **CORS support** for web applications
+- 🐳 **Docker support** with optimized configuration
+- ☁️ **Production-ready** for Cloud Run, Render.com, and other platforms
 
 ## Quick Start
 
@@ -37,18 +41,26 @@ python main.py
 
 The server will start on `http://localhost:8000`
 
-- API Documentation: `http://localhost:8000/docs`
-- Health Check: `http://localhost:8000/health`
+### Available Endpoints
+
+- **API Documentation**: `http://localhost:8000/docs` (disabled in production)
+- **Basic Health Check**: `http://localhost:8000/` - Simple status check
+- **Detailed Health**: `http://localhost:8000/health` - Comprehensive health info with stats
+- **Readiness Probe**: `http://localhost:8000/readiness` - Kubernetes-style readiness check
+- **Liveness Probe**: `http://localhost:8000/liveness` - Kubernetes-style liveness check
+- **API Info**: `http://localhost:8000/info` - Service information and usage guide
 
 ## Configuration
 
 ### Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `API_KEY` | Secret key for API authentication | Yes |
-| `SERVICE_ACCOUNT_JSON` | Google service account JSON (as string or file path) | Yes |
-| `PORT` | Server port (default: 8000) | No |
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `API_KEY` | Secret key for API authentication | Yes | - |
+| `SERVICE_ACCOUNT_JSON` | Google service account JSON (as string or file path) | Yes | - |
+| `PORT` | Server port | No | 8000 |
+| `ENVIRONMENT` | Environment type (production, development) | No | development |
+| `PYTHONUNBUFFERED` | Disable Python output buffering | No | 0 |
 
 ### Service Account Setup
 
@@ -60,6 +72,54 @@ The server will start on `http://localhost:8000`
 6. Grant necessary permissions (Document AI User, etc.)
 7. Create and download JSON key
 8. Use the JSON content in `SERVICE_ACCOUNT_JSON` environment variable
+
+## Auto-Restart & Monitoring
+
+The application includes built-in monitoring and auto-restart capabilities for production deployments:
+
+### Health Monitoring Features
+
+- **Request Tracking**: Monitors total requests, success rate, and consecutive failures
+- **Google Connectivity**: Tests connection to Google's OAuth2 services
+- **Failure Detection**: Tracks consecutive failures and degrades service status
+- **Graceful Shutdown**: Handles SIGTERM and SIGINT signals properly
+- **Uptime Tracking**: Reports service uptime and last successful token generation
+
+### Render.com Auto-Restart
+
+The `render.yaml` configuration includes:
+- **Health Check Path**: `/health` endpoint for automatic monitoring
+- **Auto Deploy**: Automatically deploys on code changes
+- **Resource Limits**: Configured for optimal performance
+- **Environment**: Production-ready settings
+
+### Health Check Endpoints
+
+| Endpoint | Purpose | Use Case |
+|----------|---------|----------|
+| `/` | Basic health | Load balancer health checks |
+| `/health` | Detailed status | Monitoring systems, dashboards |
+| `/readiness` | Service readiness | Kubernetes readiness probes |
+| `/liveness` | Service liveness | Kubernetes liveness probes |
+
+### Sample Health Response
+
+```json
+{
+  "status": "healthy",
+  "service_account_email": "your-service@project.iam.gserviceaccount.com",
+  "timestamp": "2024-01-01T12:00:00.000000",
+  "uptime_seconds": 3600,
+  "stats": {
+    "total_requests": 150,
+    "successful_requests": 148,
+    "consecutive_failures": 0,
+    "last_successful_token": "2024-01-01T11:59:30.000000",
+    "success_rate": 0.987
+  },
+  "issues": []
+}
+```
 
 ## API Usage
 
@@ -99,15 +159,20 @@ curl -X POST \
 
 ### Deploy to Render.com
 
-1. Connect your GitHub repository to Render
-2. Create a new Web Service
-3. Use the following settings:
-   - Build Command: `pip install -r requirements.txt`
-   - Start Command: `python main.py`
-4. Set environment variables:
-   - `API_KEY`: Your secret API key
-   - `SERVICE_ACCOUNT_JSON`: Your service account JSON content
-   - `PORT`: `10000`
+The project includes a production-ready `render.yaml` configuration:
+
+1. **Connect Repository**: Link your GitHub repository to Render
+2. **Auto-Deploy**: The service will auto-deploy using the `render.yaml` configuration
+3. **Set Environment Variables** in Render Dashboard:
+   - `API_KEY`: Your secret API key (keep this secure!)
+   - `SERVICE_ACCOUNT_JSON`: Your complete service account JSON content
+4. **Health Monitoring**: Render will automatically monitor `/health` endpoint
+5. **Auto-Restart**: Service will restart automatically if health checks fail
+
+**Manual Setup** (if not using render.yaml):
+- Build Command: `pip install --upgrade pip && pip install -r requirements.txt`
+- Start Command: `python main.py`
+- Health Check Path: `/health`
 
 ### Deploy to Google Cloud Run
 
@@ -153,9 +218,19 @@ docker run -p 8000:8000 \
 
 ## Testing
 
-### Health Check
+### Health Checks
 ```bash
+# Basic health check
+curl https://your-server.com/
+
+# Detailed health with stats
 curl https://your-server.com/health
+
+# Readiness check
+curl https://your-server.com/readiness
+
+# Liveness check  
+curl https://your-server.com/liveness
 ```
 
 ### Token Generation Test
@@ -163,6 +238,63 @@ curl https://your-server.com/health
 curl -X POST 'https://your-server.com/token' \
   -H 'Authorization: Bearer your-api-key'
 ```
+
+### Service Information
+```bash
+curl https://your-server.com/info
+```
+
+## Production Considerations
+
+### Performance & Scaling
+
+- **Concurrency**: Configured for up to 1000 concurrent requests
+- **Worker Restart**: Automatically restarts workers after 10,000 requests
+- **Timeout Settings**: Optimized for cloud deployment with 65s keep-alive
+- **Memory Usage**: Lightweight design with minimal memory footprint
+
+### Monitoring & Alerting
+
+1. **Set up monitoring** on these endpoints:
+   - `/health` - Overall service health
+   - `/readiness` - Service readiness
+   - `/liveness` - Service availability
+
+2. **Alert on these conditions**:
+   - Success rate < 80%
+   - Consecutive failures > 5
+   - Service status = "unhealthy" or "not_ready"
+   - High response times on `/token` endpoint
+
+3. **Key metrics to track**:
+   - Request rate and response times
+   - Token generation success rate
+   - Service uptime
+   - Error rates by type
+
+### Logging
+
+- **Structured JSON logs** for production analysis
+- **Request tracking** with client IP addresses
+- **Error correlation** with detailed stack traces
+- **Performance metrics** in log output
+
+### Security Hardening
+
+1. **API Key Management**:
+   - Use strong, randomly generated API keys
+   - Rotate keys regularly (recommend monthly)
+   - Store keys securely (environment variables, not code)
+
+2. **Network Security**:
+   - Always use HTTPS in production
+   - Consider API rate limiting
+   - Implement IP whitelisting if needed
+
+3. **Service Account Security**:
+   - Use principle of least privilege
+   - Regular permission audits
+   - Monitor service account usage
 
 ## Troubleshooting
 

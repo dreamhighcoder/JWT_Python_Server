@@ -2,13 +2,34 @@ services:
   - type: web
     name: gcp-token-server
     env: python
-    buildCommand: pip install -r requirements.txt
+    runtime: python-3.11
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
     startCommand: python main.py
+    
+    # Auto-restart and monitoring configuration
+    autoDeploy: true
+    
+    # Health check configuration for auto-restart
+    healthCheckPath: /health
+    
+    # Resource limits and scaling
+    plan: starter  # or "standard" for better performance
+    
+    # Environment variables
     envVars:
       - key: API_KEY
-        sync: false  # You'll set this in Render dashboard
-      - key: SERVICE_ACCOUNT_JSON
-        sync: false  # You'll set this in Render dashboard
+        sync: false  # Set this in Render dashboard
+      - key: SERVICE_ACCOUNT_JSON  
+        sync: false  # Set this in Render dashboard
       - key: PORT
         value: 10000  # Render's default port
-    healthCheckPath: /health
+      - key: ENVIRONMENT
+        value: production
+      - key: PYTHONUNBUFFERED
+        value: "1"  # Ensure logs are not buffered
+    
+    # Disk configuration for logs
+    disk:
+      name: logs
+      mountPath: /tmp
+      sizeGB: 1
